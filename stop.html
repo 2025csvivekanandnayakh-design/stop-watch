@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Clock & Stopwatch</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-green: #22c55e;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --border-color: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 30px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Tab Switcher */
+    .tabs {
+      display: flex;
+      background-color: var(--bg-color);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 25px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background-color: var(--card-bg);
+      color: var(--accent-cyan);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Views */
+    .view {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    /* Clock Display */
+    .clock-display {
+      font-size: 3.2rem;
+      font-weight: 700;
+      font-family: 'Courier New', Courier, monospace;
+      color: var(--accent-cyan);
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    .date-display {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-bottom: 25px;
+      font-weight: 500;
+    }
+
+    /* Stopwatch Display */
+    .stopwatch-display {
+      font-size: 3.2rem;
+      font-weight: 700;
+      font-family: 'Courier New', Courier, monospace;
+      color: var(--accent-cyan);
+      margin: 15px 0 25px 0;
+    }
+
+    /* Buttons */
+    .controls {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 90px;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-start { background-color: var(--accent-green); color: #000; }
+    .btn-pause { background-color: var(--accent-amber); color: #000; }
+    .btn-reset { background-color: var(--accent-red); color: #fff; }
+    .btn-lap { background-color: var(--accent-cyan); color: #000; }
+    .btn-toggle { background-color: var(--border-color); color: var(--text-main); }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Laps Container */
+    .laps-container {
+      width: 100%;
+      max-height: 180px;
+      overflow-y: auto;
+      border-top: 1px solid var(--border-color);
+      padding-top: 15px;
+      margin-top: 5px;
+    }
+
+    .lap-list {
+      list-style: none;
+      width: 100%;
+    }
+
+    .lap-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .lap-item:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .lap-item span.highlight {
+      color: var(--accent-cyan);
+      font-weight: bold;
+    }
+
+    /* Scrollbar styling */
+    .laps-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    .laps-container::-webkit-scrollbar-thumb {
+      background-color: var(--border-color);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="clock-tab">Clock</button>
+      <button class="tab-btn" id="stopwatch-tab">Stopwatch</button>
+    </div>
+
+    <!-- Clock View -->
+    <div class="view active" id="clock-view">
+      <div class="clock-display" id="clock">00:00:00 AM</div>
+      <div class="date-display" id="date">Monday, Jan 1, 2026</div>
+      <div class="controls">
+        <button class="btn btn-toggle" id="format-toggle-btn">Switch to 24H</button>
+      </div>
+    </div>
+
+    <!-- Stopwatch View -->
+    <div class="view" id="stopwatch-view">
+      <div class="stopwatch-display" id="stopwatch">00:00:00.00</div>
+      
+      <div class="controls">
+        <button class="btn btn-start" id="start-btn">Start</button>
+        <button class="btn btn-lap" id="lap-btn" disabled>Lap</button>
+        <button class="btn btn-reset" id="reset-btn" disabled>Reset</button>
+      </div>
+
+      <div class="laps-container" id="laps-container" style="display: none;">
+        <ul class="lap-list" id="lap-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- TAB SWITCHING ---
+    const clockTab = document.getElementById("clock-tab");
+    const stopwatchTab = document.getElementById("stopwatch-tab");
+    const clockView = document.getElementById("clock-view");
+    const stopwatchView = document.getElementById("stopwatch-view");
+
+    clockTab.addEventListener("click", () => {
+      clockTab.classList.add("active");
+      stopwatchTab.classList.remove("active");
+      clockView.classList.add("active");
+      stopwatchView.classList.remove("active");
+    });
+
+    stopwatchTab.addEventListener("click", () => {
+      stopwatchTab.classList.add("active");
+      clockTab.classList.remove("active");
+      stopwatchView.classList.add("active");
+      clockView.classList.remove("active");
+    });
+
+
+    // --- DIGITAL CLOCK ---
+    let is24HourFormat = false;
+
+    function updateClock() {
+      const now = new Date();
+      
+      // Time Format Options
+      const timeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: !is24HourFormat
+      };
+
+      // Date Format Options
+      const dateOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      };
+
+      document.getElementById("clock").textContent = now.toLocaleTimeString('en-US', timeOptions);
+      document.getElementById("date").textContent = now.toLocaleDateString('en-US', dateOptions);
+    }
+
+    const formatToggleBtn = document.getElementById("format-toggle-btn");
+    formatToggleBtn.addEventListener("click", () => {
+      is24HourFormat = !is24HourFormat;
+      formatToggleBtn.textContent = is24HourFormat ? "Switch to 12H" : "Switch to 24H";
+      updateClock();
+    });
+
+    setInterval(updateClock, 1000);
+    updateClock();
+
+
+    // --- STOPWATCH WITH LAPS ---
+    let startTime = 0;
+    let elapsedTime = 0;
+    let timerInterval = null;
+    let isRunning = false;
+    let lapCount = 0;
+    let lastLapTime = 0;
+
+    const stopwatchDisplay = document.getElementById("stopwatch");
+    const startBtn = document.getElementById("start-btn");
+    const lapBtn = document.getElementById("lap-btn");
+    const resetBtn = document.getElementById("reset-btn");
+    const lapList = document.getElementById("lap-list");
+    const lapsContainer = document.getElementById("laps-container");
+
+    function formatStopwatchTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const hours = Math.floor(minutes / 60);
+      
+      const pad = (n, digits = 2) => String(n).padStart(digits, '0');
+
+      const displayHours = pad(hours);
+      const displayMinutes = pad(minutes % 60);
+      const displaySeconds = pad(totalSeconds % 60);
+      const displayMilliseconds = pad(Math.floor((ms % 1000) / 10));
+
+      return `${displayHours}:${displayMinutes}:${displaySeconds}.${displayMilliseconds}`;
+    }
+
+    function startStopwatch() {
+      if (!isRunning) {
+        isRunning = true;
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(() => {
+          elapsedTime = Date.now() - startTime;
+          stopwatchDisplay.textContent = formatStopwatchTime(elapsedTime);
+        }, 10);
+
+        startBtn.textContent = "Pause";
+        startBtn.className = "btn btn-pause";
+        lapBtn.disabled = false;
+        resetBtn.disabled = false;
+      } else {
+        // Pause logic
+        isRunning = false;
+        clearInterval(timerInterval);
+        startBtn.textContent = "Start";
+        startBtn.className = "btn btn-start";
+        lapBtn.disabled = true;
+      }
+    }
+
+    function recordLap() {
+      if (!isRunning) return;
+
+      lapCount++;
+      const currentLapTime = elapsedTime - lastLapTime;
+      lastLapTime = elapsedTime;
+
+      // Show container on first lap
+      if (lapCount === 1) {
+        lapsContainer.style.display = "block";
+      }
+
+      const li = document.createElement("li");
+      li.className = "lap-item";
+      li.innerHTML = `
+        <span>Lap ${lapCount}</span>
+        <span>+${formatStopwatchTime(currentLapTime)}</span>
+        <span class="highlight">${formatStopwatchTime(elapsedTime)}</span>
+      `;
+
+      // Insert new lap at the top
+      lapList.prepend(li);
+    }
+
+    function resetStopwatch() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      elapsedTime = 0;
+      lastLapTime = 0;
+      lapCount = 0;
+
+      stopwatchDisplay.textContent = "00:00:00.00";
+      startBtn.textContent = "Start";
+      startBtn.className = "btn btn-start";
+
+      lapBtn.disabled = true;
+      resetBtn.disabled = true;
+
+      lapList.innerHTML = "";
+      lapsContainer.style.display = "none";
+    }
+
+    startBtn.addEventListener("click", startStopwatch);
+    lapBtn.addEventListener("click", recordLap);
+    resetBtn.addEventListener("click", resetStopwatch);
+  </script>
+
+</body>
+</html>
